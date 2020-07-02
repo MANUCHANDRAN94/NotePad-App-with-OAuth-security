@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("ejs");
 const _ = require("lodash");
+const date = require("./date.js");
 
 const app = express();
 
@@ -23,9 +24,14 @@ app.get("/signin" , function(req,res){
     res.render("signin")
 })
 app.get("/list" , function(req,res){
-    res.render("todolist")
+    // res.render("todolist")
+    res.render("todolist", {listTitle: "Today",todaysDate: date() ,newListItems: [{name:"hello"},{name:"hello"},{name:"hello"}]});
+    
+    
 })
-
+app.get("/listmenu" , function(req,res){
+    res.render("listmenu", {todaysDate: date()});
+});
 
 
 

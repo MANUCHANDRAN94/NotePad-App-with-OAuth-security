@@ -1,0 +1,29 @@
+<%- include("partials/headerList") -%>
+
+<div class="box" id="heading">
+  <h1>
+    Todo List <br />
+    <%= todaysDate %>
+  </h1>
+</div>
+
+<div class="box menubox">
+  <div class="box1">
+    <a href="/work"><strong>WORK </strong></a>
+  </div>
+  <div class="box1">
+    <a href="/family"><strong>FAMILY </strong></a>
+  </div>
+  <div class="box1">
+    <a href="/entertainment"><strong>ENTERTAINMENT</strong></a>
+  </div>
+  <div class="box1">
+    <a href="/dreambucket"><strong>DREAM BUCKET</strong></a>
+  </div>
+  <div class="box1">
+    <a href="/newcate"><strong>NEW CATE</strong></a>
+  </div>
+</div>
+<a href="/logout"><div><button class="logout"></button></div></a>
+
+<%- include("partials/footerList") -%>

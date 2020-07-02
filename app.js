@@ -36,11 +36,25 @@ const listSchema = {
 
 const List = mongoose.model("List", listSchema);
 
+
+app.get("/signup", function (req, res) {
+  res.render("signup");
+});
+app.get("/", function (req, res) {
+  res.render("signin");
+});
+app.get("/logout", function (req, res) {
+  res.redirect("/");
+});
+
+
+
+
 app.get("/listmenu", function (req, res) {
   res.render("listmenu", { todaysDate: date() });
 });
 
-app.get("/listmenu/:customListName", function (req, res) {
+app.get("/:customListName", function (req, res) {
   const customListName = _.capitalize(req.params.customListName);
 
   List.findOne({ name: customListName }, function (err, foundList) {
@@ -51,8 +65,12 @@ app.get("/listmenu/:customListName", function (req, res) {
           name: customListName,
           items: [],
         });
-        list.save();
-        res.redirect("/" + customListName);
+        list.save(function(err,data){
+          if(!err){
+            res.redirect("/" + customListName);
+          }
+        });
+       
       } else {
         //Show an existing list
 
@@ -84,15 +102,18 @@ app.post("/add", function(req, res){
     
   });
 
-app.get("/signup", function (req, res) {
-  res.render("signup");
-});
-app.get("/signin", function (req, res) {
-  res.render("signin");
-});
-app.get("/logout", function (req, res) {
-  res.redirect("/signin");
-});
+  app.post("/delete", function(req, res){
+    const checkedItemId = req.body.checkbox;
+    const listName = req.body.listName;
+
+      List.findOneAndUpdate({name: listName}, {$pull: {items: {_id: checkedItemId}}}, function(err, foundList){
+        if (!err){
+          res.redirect("/" + listName);
+        }
+      });
+ 
+  
+  });
 
 
 app.listen(port, function (req, res) {

@@ -1,0 +1,11 @@
+{
+  "name": "todolist-with-oauth",
+  "version": "1.0.0",
+  "description": "This project is a simple todoList which have a max security authentication.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Manu",
+  "license": "ISC"
+}

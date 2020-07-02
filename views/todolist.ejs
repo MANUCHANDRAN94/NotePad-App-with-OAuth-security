@@ -15,21 +15,23 @@
             <form action="/delete" method="post">
               <div class="item">
                 <input type="checkbox" name="checkbox" value="<%=item._id%>" onChange="this.form.submit()">
-                <p><%=item.name%></p>
+                <p><%=item.itemName%></p>
               </div>
               <input type="hidden" name="listName" value="<%= listTitle %>"></input>
             </form>
           <%  }) %>
         
         
-              <form class="item" action="/" method="post">
+              <form class="item" action="/add" method="post">
                 <input type="text" name="newItem" placeholder="New Item" autocomplete="off">
                 <button type="submit" name="list" value="<%= listTitle %>">+</button>
               </form>
           </div>
-          <a href=""><div><button class="logout">Logout</button></div></a>
+          <div class="backdiv">
+          <a href="/listmenu"><button class="back">Back</button></a>
+          <a href="/logout"><button class="back">Logout</button></a>
         
-        
+        </div>
 
 
 

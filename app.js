@@ -1,40 +1,100 @@
 require("dotenv").config();
 const express = require("express");
-const mongoose = require("ejs");
+const ejs = require("ejs");
+const mongoose = require("mongoose");
 const _ = require("lodash");
 const date = require("./date.js");
 
 const app = express();
 
-const host = "127.0.0.1"
+const host = "127.0.0.1";
 let port = process.env.PORT;
-if(port == null || port == ""){
-port = 3000;}
+if (port == null || port == "") {
+  port = 3000;
+}
 
-app.set('view engine', 'ejs');
+app.set("view engine", "ejs");
 
-app.use(express.urlencoded({extended: true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+mongoose.connect("mongodb://localhost:27017/todoDB", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
-app.get("/signup" , function(req,res){
-    res.render("signup")
-})
-app.get("/signin" , function(req,res){
-    res.render("signin")
-})
-app.get("/list" , function(req,res){
-    // res.render("todolist")
-    res.render("todolist", {listTitle: "Today",todaysDate: date() ,newListItems: [{name:"hello"},{name:"hello"},{name:"hello"}]});
-    
-    
-})
-app.get("/listmenu" , function(req,res){
-    res.render("listmenu", {todaysDate: date()});
+const itemsSchema = {
+  itemName: String,
+};
+
+const Item = mongoose.model("Item", itemsSchema);
+
+const listSchema = {
+  name: String,
+  items: [itemsSchema]
+};
+
+const List = mongoose.model("List", listSchema);
+
+app.get("/listmenu", function (req, res) {
+  res.render("listmenu", { todaysDate: date() });
+});
+
+app.get("/listmenu/:customListName", function (req, res) {
+  const customListName = _.capitalize(req.params.customListName);
+
+  List.findOne({ name: customListName }, function (err, foundList) {
+    if (!err) {
+      if (!foundList) {
+        //  Create a new list
+        const list = new List({
+          name: customListName,
+          items: [],
+        });
+        list.save();
+        res.redirect("/" + customListName);
+      } else {
+        //Show an existing list
+
+        res.render("todolist", {
+          listTitle: foundList.name,
+          todaysDate: date(),
+          newListItems: foundList.items,
+        });
+      }
+    }
+  });
 });
 
 
+app.post("/add", function(req, res){
 
-app.listen(port , function(req,res){
-    console.log(`server started running at http://${host}:${port}`);
-})
+    const itemm = req.body.newItem;
+    const listName = req.body.list;
+  
+    const item = new Item({
+        itemName: itemm
+    });
+  
+      List.findOne({name: listName}, function(err, foundList){
+        foundList.items.push(item);
+        foundList.save();
+        res.redirect("/" + listName);
+      });
+    
+  });
+
+app.get("/signup", function (req, res) {
+  res.render("signup");
+});
+app.get("/signin", function (req, res) {
+  res.render("signin");
+});
+app.get("/logout", function (req, res) {
+  res.redirect("/signin");
+});
+
+
+app.listen(port, function (req, res) {
+  console.log(`server started running at http://${host}:${port}`);
+});

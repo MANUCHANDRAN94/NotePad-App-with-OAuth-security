@@ -2,6 +2,9 @@ require("dotenv").config();
 const express = require("express");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
+const session = require("express-session");
+const passport = require("passport");
+const passportLocalMongoose = require("passport-local-mongoose");
 const _ = require("lodash");
 const date = require("./date.js");
 
@@ -18,23 +21,62 @@ app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+app.use(session({
+  secret:"mittu poocha",
+  resave: false,
+  saveUninitialized: false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+
 mongoose.connect("mongodb://localhost:27017/todoDB", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+mongoose.set("useCreateIndex", true);    //to remove this (DeprecationWarning: collection.ensureIndex is deprecated. Use createIndexes instead.)
+
 
 const itemsSchema = {
   itemName: String,
 };
-
 const Item = mongoose.model("Item", itemsSchema);
 
 const listSchema = {
   name: String,
   items: [itemsSchema]
 };
-
 const List = mongoose.model("List", listSchema);
+
+
+
+const userSchema = new mongoose.Schema ({
+  email: String,
+  password: String,
+  content: listSchema
+});
+
+userSchema.plugin(passportLocalMongoose);
+
+const User = new mongoose.model("User", userSchema);
+
+passport.use(User.createStrategy());
+
+passport.serializeUser(function(user, done) {
+  done(null, user.id);
+});
+
+passport.deserializeUser(function(id, done) {
+  User.findById(id, function(err, user) {
+    done(err, user);
+  });
+});
+
+
+
+
+
 
 
 app.get("/signup", function (req, res) {
@@ -44,6 +86,7 @@ app.get("/", function (req, res) {
   res.render("signin");
 });
 app.get("/logout", function (req, res) {
+  res.logout();
   res.redirect("/");
 });
 
@@ -51,7 +94,14 @@ app.get("/logout", function (req, res) {
 
 
 app.get("/listmenu", function (req, res) {
-  res.render("listmenu", { todaysDate: date() });
+  console.log(req.body);
+  if(req.isAuthenticated()){
+    console.log('REACHED GETLISTMENU IF CASE');
+    
+    res.render("listmenu", { todaysDate: date() });
+  } else {
+    res.redirect("/")
+  }
 });
 
 app.get("/:customListName", function (req, res) {
@@ -112,6 +162,50 @@ app.post("/add", function(req, res){
         }
       });
  
+  
+  });
+
+  app.post("/signup", function(req,res){
+    console.log('REACHED IN SIGNUP');
+    
+    User.register({username: req.body.email}, req.body.pass, function(err, user){
+      if (err) {
+        console.log(err);
+        res.redirect("/signup");
+      } else {
+        passport.authenticate("local")(req, res, function(){
+          res.redirect("/listmenu");
+        });
+      }
+    });
+  });
+
+
+  app.post("/", function(req, res){
+
+    
+
+    const user = new User({
+      username: req.body.your_name,
+      password: req.body.your_pass
+    });
+
+    console.log(user);
+  
+    req.login(user, function(err){  //cjheck what this function does.
+      if (err) {
+        console.log(err);
+      } else {
+        passport.authenticate("local",
+        //  { successRedirect: '/listmenu',
+        // failureRedirect: '/' });
+       // (req, res, 
+          function(){
+          console.log('REACHED IN SIGnin else');
+          res.redirect("/listmenu");
+        });
+      }
+    });
   
   });
 

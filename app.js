@@ -35,6 +35,7 @@ app.use(passport.session());
 mongoose.connect("mongodb://localhost:27017/todoDB", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  useFindAndModify: false,
 });
 mongoose.set("useCreateIndex", true); //to remove this (DeprecationWarning: collection.ensureIndex is deprecated. Use createIndexes instead.)
 
@@ -52,7 +53,7 @@ const List = mongoose.model("List", listSchema);
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
-  content: listSchema,
+  content: [listSchema],
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -78,7 +79,7 @@ app.get("/", function (req, res) {
   res.render("signin");
 });
 app.get("/logout", function (req, res) {
-  res.logout();
+  req.logout();
   res.redirect("/");
 });
 
@@ -90,47 +91,96 @@ app.get("/listmenu", function (req, res) {
   }
 });
 
-app.get("/listmenu/:customListName", function (req, res) {
+// let userId = "5f03f0e5de882824e62ac185"
+
+// User.findOne({ _id: userId }, function(err,obj) {
+//   const list = new List({
+//     name: "Work",
+//     items: [{itemName:"item1"},{itemName:"item2"},{itemName:"item3"}]
+//   });
+//   obj.content.push(list);
+//   obj.save();
+
+//    });
+
+app.get("/:customListName", function (req, res) {
   const customListName = _.capitalize(req.params.customListName);
-//give authentication and req.user._id
-  List.findOne({ name: customListName }, function (err, foundList) {
-    if (!err) {
-      if (!foundList) {
+  //give authentication and req.user._id
+  if (req.isAuthenticated()) {
+    User.findOne({ _id: req.user._id }, (err, foundList) => {
+      if (!err) {
         //  Create a new list
         const list = new List({
           name: customListName,
-          items: [],
+          items: [
+            { itemName: "item1" },
+            { itemName: "item2" },
+            { itemName: "item3" },
+          ],
         });
-        list.save(function (err, data) {
-          if (!err) {
-            res.redirect("/" + customListName);
-          }
-        });
-      } else {
-        //Show an existing list
+        if (foundList.content.length == 0) {
+          foundList.content.push(list);
+          foundList.save(function (err, data) {
+            if (!err) {
+              res.redirect("/" + customListName);
+            }
+          });
+        } else {
+          let flag = false;
+          // foundList.content.forEach((element) => {
+            for(let i=0; i<foundList.content.length;i++){
+            console.log("INSIDE FOR EEACH");
+             if (element.name == customListName) {
+              //Show an existing list
+              console.log("SHowing existing list");
+              flag = true;
+                 res.render("todolist", {
+                listTitle: element.name,
+                todaysDate: date(),
+                newListItems: element.items,
+              });
+              return false;
+            }
+            
+          });
 
-        res.render("todolist", {
-          listTitle: foundList.name,
-          todaysDate: date(),
-          newListItems: foundList.items,
-        });
+          if (!flag) {
+            foundList.content.push(list);
+            foundList.save(function (err, data) {
+              if (!err) {
+                res.redirect("/" + customListName);
+              }
+            });
+          }
+        }
+      } else {
+        console.log(err);
       }
-    }
-  });
+    });
+  } else {
+    res.redirect("/");
+  }
 });
 
 app.post("/add", function (req, res) {
   const itemm = req.body.newItem;
   const listName = req.body.list;
-
   const item = new Item({
     itemName: itemm,
   });
 
-  List.findOne({ name: listName }, function (err, foundList) {
-    foundList.items.push(item);
-    foundList.save();
-    res.redirect("/listmenu/" + listName);
+  User.findOne({ _id: req.user._id }, function (err, foundList) {
+    foundList.content.map((element) => {
+      console.log(element.name+ "   "+  listName);
+      if (element.name == listName) {
+        element.items.push(item);
+        foundList.save();
+        return res.redirect("/" + listName);
+      } else {
+        console.log("in else case")
+        res.redirect("/listmenu");
+      }
+    });
   });
 });
 
@@ -138,12 +188,18 @@ app.post("/delete", function (req, res) {
   const checkedItemId = req.body.checkbox;
   const listName = req.body.listName;
 
-  List.findOneAndUpdate(
-    { name: listName },
-    { $pull: { items: { _id: checkedItemId } } },
+  User.findByIdAndRemove(
+    { _id: req.user._id },
+    { $pull: { content: [{ items: [{ _id: checkedItemId }] }] } },
+    // { _id: req.user._id },
+    // { $pull: { content:[{ items: [{ _id: checkedItemId }] } ]} },
     function (err, foundList) {
       if (!err) {
-        res.redirect("/listmenu/" + listName);
+        console.log("thsi is " + foundList);
+        res.redirect("/" + listName);
+      } else {
+        console.log(err);
+        res.redirect("/listmenu");
       }
     }
   );

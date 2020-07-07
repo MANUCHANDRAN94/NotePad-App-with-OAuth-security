@@ -7,6 +7,7 @@ const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const _ = require("lodash");
 const date = require("./date.js");
+const findOrCreate = require('mongoose-findorcreate');
 
 const app = express();
 
@@ -35,7 +36,7 @@ app.use(passport.session());
 mongoose.connect("mongodb://localhost:27017/todoDB", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  useFindAndModify: false,
+  // useFindAndModify: false,
 });
 mongoose.set("useCreateIndex", true); //to remove this (DeprecationWarning: collection.ensureIndex is deprecated. Use createIndexes instead.)
 
@@ -90,18 +91,6 @@ app.get("/listmenu", function (req, res) {
     res.redirect("/");
   }
 });
-
-// let userId = "5f03f0e5de882824e62ac185"
-
-// User.findOne({ _id: userId }, function(err,obj) {
-//   const list = new List({
-//     name: "Work",
-//     items: [{itemName:"item1"},{itemName:"item2"},{itemName:"item3"}]
-//   });
-//   obj.content.push(list);
-//   obj.save();
-
-//    });
 
 app.get("/:customListName", function (req, res) {
   const customListName = _.capitalize(req.params.customListName);
@@ -185,24 +174,26 @@ app.post("/delete", function (req, res) {
   const checkedItemId = req.body.checkbox;
   const listName = req.body.listName;
 
-  User.findByIdAndRemove(
-    { _id: req.user._id },
-    { $pull: { content: [{ items: [{ _id: checkedItemId }] }] } },
-    // { _id: req.user._id },
-    // { $pull: { content:[{ items: [{ _id: checkedItemId }] } ]} },
-    function (err, foundList) {
-      if (!err) {
-        res.redirect("/" + listName);
-      } else {
-        console.log(err);
-        res.redirect("/listmenu");
+  User.find({ _id: req.user._id }, function (err, foundList) {
+    for (let i = 0; i < foundList[0].content.length; i++) {
+      if (foundList[0].content[i].name == listName) {
+        for (let j = 0; j < foundList[0].content[i].items.length; j++) {
+          if (foundList[0].content[i].items[j]._id == checkedItemId) {
+            foundList[0].content[i].items.splice(j, j);
+            foundList[0].save((err) => {
+              if (!err) {
+                res.redirect("/" + listName);
+                return;
+              }
+            });
+          }
+        }
       }
     }
-  );
+  });
 });
 
 app.post("/signup", function (req, res) {
-
   User.register({ username: req.body.username }, req.body.password, function (
     err,
     user

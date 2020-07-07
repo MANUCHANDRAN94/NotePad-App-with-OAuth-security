@@ -128,21 +128,19 @@ app.get("/:customListName", function (req, res) {
         } else {
           let flag = false;
           // foundList.content.forEach((element) => {
-            for(let i=0; i<foundList.content.length;i++){
-            console.log("INSIDE FOR EEACH");
-             if (element.name == customListName) {
+          for (let i = 0; i < foundList.content.length; i++) {
+            if (foundList.content[i].name == customListName) {
               //Show an existing list
-              console.log("SHowing existing list");
               flag = true;
-                 res.render("todolist", {
-                listTitle: element.name,
+              res.render("todolist", {
+                listTitle: foundList.content[i].name,
                 todaysDate: date(),
-                newListItems: element.items,
+                newListItems: foundList.content[i].items,
               });
-              return false;
+              break;
             }
-            
-          });
+          }
+          // });
 
           if (!flag) {
             foundList.content.push(list);
@@ -170,17 +168,16 @@ app.post("/add", function (req, res) {
   });
 
   User.findOne({ _id: req.user._id }, function (err, foundList) {
-    foundList.content.map((element) => {
-      console.log(element.name+ "   "+  listName);
-      if (element.name == listName) {
-        element.items.push(item);
+    //foundList.content.map((element) => {
+    for (let i = 0; i < foundList.content.length; i++) {
+      if (foundList.content[i].name == listName) {
+        foundList.content[i].items.push(item);
         foundList.save();
-        return res.redirect("/" + listName);
-      } else {
-        console.log("in else case")
-        res.redirect("/listmenu");
+        res.redirect("/" + listName);
+        break;
       }
-    });
+    }
+    //});
   });
 });
 
@@ -195,7 +192,6 @@ app.post("/delete", function (req, res) {
     // { $pull: { content:[{ items: [{ _id: checkedItemId }] } ]} },
     function (err, foundList) {
       if (!err) {
-        console.log("thsi is " + foundList);
         res.redirect("/" + listName);
       } else {
         console.log(err);
@@ -206,7 +202,6 @@ app.post("/delete", function (req, res) {
 });
 
 app.post("/signup", function (req, res) {
-  console.log("REACHED IN SIGNUP");
 
   User.register({ username: req.body.username }, req.body.password, function (
     err,

@@ -8,6 +8,9 @@
   },
   "author": "Manu",
   "license": "ISC",
+  "engines": {
+    "node": "12.18.2"
+  },
   "dependencies": {
     "dotenv": "^8.2.0",
     "ejs": "^3.1.3",

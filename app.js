@@ -7,6 +7,7 @@ const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const _ = require("lodash");
 const date = require("./date.js");
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const findOrCreate = require('mongoose-findorcreate');
 
 const app = express();
@@ -24,7 +25,7 @@ app.use(express.static("public"));
 
 app.use(
   session({
-    secret: "mittu poocha",
+    secret: process.env.SECRET,
     resave: false,
     saveUninitialized: false,
   })
@@ -32,7 +33,6 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
-
 mongoose.connect("mongodb://localhost:27017/todoDB", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -54,10 +54,12 @@ const List = mongoose.model("List", listSchema);
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
+  googleId: String,
   content: [listSchema],
 });
 
 userSchema.plugin(passportLocalMongoose);
+userSchema.plugin(findOrCreate);
 
 const User = new mongoose.model("User", userSchema);
 
@@ -73,12 +75,39 @@ passport.deserializeUser(function (id, done) {
   });
 });
 
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/notepad",
+    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    console.log(profile);
+
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
 app.get("/signup", function (req, res) {
   res.render("signup");
 });
 app.get("/", function (req, res) {
   res.render("signin");
 });
+
+app.get("/auth/google",
+  passport.authenticate('google', { scope: ["profile"] })
+);
+
+app.get("/auth/google/notepad",
+  passport.authenticate('google', { failureRedirect: "/signup" }),
+  function(req, res) {
+    res.redirect("/listmenu");
+  });
+
+
 app.get("/logout", function (req, res) {
   req.logout();
   res.redirect("/");
@@ -94,18 +123,13 @@ app.get("/listmenu", function (req, res) {
 
 app.get("/:customListName", function (req, res) {
   const customListName = _.capitalize(req.params.customListName);
-  //give authentication and req.user._id
   if (req.isAuthenticated()) {
     User.findOne({ _id: req.user._id }, (err, foundList) => {
       if (!err) {
         //  Create a new list
         const list = new List({
           name: customListName,
-          items: [
-            { itemName: "item1" },
-            { itemName: "item2" },
-            { itemName: "item3" },
-          ],
+          items: [],
         });
         if (foundList.content.length == 0) {
           foundList.content.push(list);
@@ -116,7 +140,6 @@ app.get("/:customListName", function (req, res) {
           });
         } else {
           let flag = false;
-          // foundList.content.forEach((element) => {
           for (let i = 0; i < foundList.content.length; i++) {
             if (foundList.content[i].name == customListName) {
               //Show an existing list
@@ -129,8 +152,6 @@ app.get("/:customListName", function (req, res) {
               break;
             }
           }
-          // });
-
           if (!flag) {
             foundList.content.push(list);
             foundList.save(function (err, data) {
@@ -157,7 +178,6 @@ app.post("/add", function (req, res) {
   });
 
   User.findOne({ _id: req.user._id }, function (err, foundList) {
-    //foundList.content.map((element) => {
     for (let i = 0; i < foundList.content.length; i++) {
       if (foundList.content[i].name == listName) {
         foundList.content[i].items.push(item);
@@ -166,7 +186,6 @@ app.post("/add", function (req, res) {
         break;
       }
     }
-    //});
   });
 });
 
@@ -214,8 +233,7 @@ app.post("/", function (req, res) {
     username: req.body.username,
     password: req.body.password,
   });
-
-  req.login(user, function (err) {
+   req.login(user, function (err) {
     if (err) {
       console.log(err);
     } else {
